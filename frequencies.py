@@ -1,8 +1,10 @@
+import matplotlib
+matplotlib.use('Agg')
+
 import sys
-import ui_main
-import numpy as np
-import pyqtgraph
 import SWHear
+
+import scipy
 
 import os
 import sys
@@ -12,11 +14,41 @@ import pigpio
 import time
 from thread import start_new_thread
 
+import scipy.io.wavfile as wavfile
+import numpy as np
+import pylab as pl
+
+
+RED_PIN   = 17
+GREEN_PIN = 22
+BLUE_PIN  = 24
+
+#white default
+bright = 255
 r = 255.0
-g = 0.0
-b = 0.0
+g = 255.0
+b = 255.0
 
 state = True
+abort = False
+
+print "started"
+
+#ear = SWHear.SWHear(rate=44100,updatesPerSecond=20)
+#ear.stream_start()
+rate, data = wavfile.read('test.wav')
+#t = np.arange(len(data[:,0]))*1.0/rate
+#pl.plot(t,data[:0])
+#pl.show()
+
+p = 20*np.log10(np.abs(np.fft.rfft(data[:2048, 0])))
+f = np.linspace(0, rate/2.0, len(p))
+print(f)
+pl.plot(f,p)
+pl.xlabel("Frequency(Hz)")
+pl.ylabel("Power(dB)")
+pl.show()
+
 
 pi = pigpio.pi()
 
@@ -65,10 +97,6 @@ def checkKey():
 
 start_new_thread(checkKey, ())
 
-print ("+ / - = Increase / Decrease brightness")
-print ("p / s / r = Pause Completely / Stop on Color / Resume")
-print ("f = flash lights / d to go back to dimming fade")
-print ("1 / 2 / 3 / 4 / 5 / 6 for different speeds")
 print ("c = Abort Program")
 
 
@@ -77,33 +105,35 @@ setLights(RED_PIN, r)
 setLights(GREEN_PIN, g)
 setLights(BLUE_PIN, b)
 
+
+
 while abort == False:
     if state:
         #Basically here just get the audio fft values then change colors 
         #based on those values instead of how this was done
         if r == 255 and b == 0 and g < 255:
                         
-            g = updateColor(g, steps)
+            g = changeColor(g, steps)
             setLights(GREEN_PIN, g)
         
         elif g == 255 and b == 0 and r > 0:
-            r = updateColor(r, -steps)
+            r = changeColor(r, -steps)
             setLights(RED_PIN, r)
         
         elif r == 0 and g == 255 and b < 255:
-            b = updateColor(b, steps)
+            b = changeColor(b, steps)
             setLights(BLUE_PIN, b)
         
         elif r == 0 and b == 255 and g > 0:
-            g = updateColor(g, -steps)
+            g = changeColor(g, -steps)
             setLights(GREEN_PIN, g)
 
         elif g == 0 and b == 255 and r < 255:
-            r = updateColor(r, steps)
+            r = changeColor(r, steps)
             setLights(RED_PIN, r)
         
         elif r == 255 and g == 0 and b > 0:
-            b = updateColor(b, -steps)
+            b = changeColor(b, -steps)
             setLights(BLUE_PIN, b)
     
 print ("Aborting...")
